@@ -84,16 +84,7 @@ layout = dbc.Container([
                         ], md=6),
                     ], className="mt-3"),
                     
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Button(
-                                "Apply Filters", 
-                                id="apply-filters-button", 
-                                color="primary", 
-                                className="mt-3"
-                            ),
-                        ]),
-                    ]),
+                    # Apply Filters button removed
                 ]),
             ], className="mb-4"),
         ]),
@@ -137,10 +128,10 @@ def register_history_callbacks(app):
     
     @app.callback(
         Output("metrics-list-store", "data"),
-        Input("apply-filters-button", "n_clicks"),
+        Input("metric-dropdown", "id"),  # Just to trigger on page load
         prevent_initial_call=False
     )
-    def fetch_metrics_list(n_clicks):
+    def fetch_metrics_list(dropdown_id):
         """Fetch the list of available metrics."""
         try:
             response = requests.get(f"{SERVER_URL}/metrics")
@@ -185,15 +176,14 @@ def register_history_callbacks(app):
     
     @app.callback(
         Output("snapshots-store", "data"),
-        [Input("apply-filters-button", "n_clicks"),
-         State("metric-dropdown", "value"),
-         State("start-date", "date"),
-         State("start-time", "value"),
-         State("end-date", "date"),
-         State("end-time", "value")],
+        [Input("metric-dropdown", "value"),
+         Input("start-date", "date"),
+         Input("start-time", "value"),
+         Input("end-date", "date"),
+         Input("end-time", "value")],
         prevent_initial_call=True
     )
-    def fetch_snapshots(n_clicks, metric_uuid, start_date, start_time, end_date, end_time):
+    def fetch_snapshots(metric_uuid, start_date, start_time, end_date, end_time):
         """Fetch snapshots for the selected metric and time range."""
         if not metric_uuid:
             return []

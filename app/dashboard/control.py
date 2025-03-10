@@ -148,14 +148,15 @@ def register_control_callbacks(app):
          Input("confirm-shutdown-button", "n_clicks")],
         [State("shutdown-confirmation-modal", "is_open"),
          State("aggregators-store", "data")],
-        prevent_initial_call=True
+        prevent_initial_call=False
     )
     def toggle_shutdown_modal(shutdown_clicks, cancel_clicks, confirm_clicks, is_open, aggregators):
         """Toggle the shutdown confirmation modal."""
         ctx = callback_context
         
-        if not ctx.triggered:
-            return is_open, None
+        # Check if this is the initial call
+        if not ctx.triggered or all(click is None for click in shutdown_clicks) and cancel_clicks is None and confirm_clicks is None:
+            return False, None
         
         # Get the ID of the component that triggered the callback
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]

@@ -2,7 +2,7 @@ import requests
 import json
 import time
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import threading
 import signal
 import sys
@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Base URL for the API
-BASE_URL = os.getenv('SERVER_URL', 'http://localhost:5001')
+BASE_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
 
 # Global flag for shutdown
 shutdown_requested = False
@@ -32,30 +32,28 @@ def register_aggregator(name):
         print(f"Error registering aggregator: {response.text}")
         return None
 
-def register_metric(aggregator_uuid, metric_name, unit):
-    """Register a new metric under an aggregator."""
+def register_metric(aggregator_uuid, name, unit):
+    """Register a new metric."""
     response = requests.post(
         f"{BASE_URL}/register_metric",
         headers={"Content-Type": "application/json"},
         data=json.dumps({
             "aggregator_uuid": aggregator_uuid,
-            "metric_name": metric_name,
+            "name": name,
             "unit": unit
         })
     )
     
     if response.status_code == 201:
-        return response.json()["metric_uuid"]
+        return response.json()["uuid"]
     else:
         print(f"Error registering metric: {response.text}")
         return None
 
-def submit_snapshot(metric_uuid, value):
+def submit_snapshot(metric_uuid, value, offset_minutes):
     """Submit a metric snapshot."""
     # Get current time in UTC
     now = datetime.now(timezone.utc)
-    # Get local timezone offset in minutes
-    offset = int(time.timezone / 60)
     
     response = requests.post(
         f"{BASE_URL}/snapshot",
@@ -64,7 +62,7 @@ def submit_snapshot(metric_uuid, value):
             "metric_uuid": metric_uuid,
             "value": value,
             "timestamp": now.isoformat(),
-            "offset": offset
+            "offset": offset_minutes
         })
     )
     
@@ -99,15 +97,25 @@ def generate_metrics(aggregator_uuid, metric_uuids, interval=5):
     """Generate random metrics at regular intervals."""
     global shutdown_requested
     
+    # Define different timezone offsets for each metric (in minutes)
+    offsets = {
+        metric_uuids[0]: -480,  # UTC-8 (e.g., Pacific Time)
+        metric_uuids[1]: 60,    # UTC+1 (e.g., Central European Time)
+        metric_uuids[2]: 330,   # UTC+5:30 (e.g., India)
+    }
+    
     while not shutdown_requested:
         for metric_uuid in metric_uuids:
             # Generate a random value
             value = random.uniform(0, 100)
             
-            # Submit the snapshot
-            success = submit_snapshot(metric_uuid, value)
+            # Get the offset for this metric
+            offset = offsets.get(metric_uuid, 0)
+            
+            # Submit the snapshot with the offset
+            success = submit_snapshot(metric_uuid, value, offset)
             if success:
-                print(f"Submitted snapshot for metric {metric_uuid}: {value}")
+                print(f"Submitted snapshot for metric {metric_uuid}: {value} (UTC{'+' if offset >= 0 else ''}{offset//60:02d}:{abs(offset%60):02d})")
             else:
                 print(f"Failed to submit snapshot for metric {metric_uuid}")
         
@@ -137,11 +145,11 @@ def main():
     
     print(f"Aggregator registered with UUID: {aggregator_uuid}")
     
-    # Register some metrics
+    # Register metrics with location context
     metrics = [
-        {"name": "temperature", "unit": "°C"},
-        {"name": "humidity", "unit": "%"},
-        {"name": "pressure", "unit": "hPa"}
+        {"name": "temperature_sf", "unit": "°C"},    # San Francisco
+        {"name": "temperature_paris", "unit": "°C"},  # Paris
+        {"name": "temperature_mumbai", "unit": "°C"}, # Mumbai
     ]
     
     metric_uuids = []

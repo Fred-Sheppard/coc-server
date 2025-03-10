@@ -2,7 +2,7 @@ from dash import html, dcc, callback, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 from dotenv import load_dotenv
@@ -22,12 +22,23 @@ layout = dbc.Container([
                 "The data is automatically refreshed every 5 seconds.",
                 className="lead"
             ),
-            dbc.Button(
-                "Refresh Now", 
-                id="refresh-button", 
-                color="primary", 
-                className="mb-3"
-            ),
+            dbc.Row([
+                dbc.Col([
+                    html.Label("Timezone Display"),
+                    dcc.Dropdown(
+                        id="timezone-dropdown",
+                        options=[
+                            {"label": "UTC", "value": "utc"},
+                            {"label": "Server Time", "value": "server"},
+                            {"label": "Local Time", "value": "client"},
+                            {"label": "Aggregator Time", "value": "aggregator"}
+                        ],
+                        value="utc",
+                        clearable=False,
+                        className="mb-3"
+                    ),
+                ], md=4),
+            ]),
             html.Div(id="last-update-time"),
         ])
     ]),
@@ -45,31 +56,39 @@ layout = dbc.Container([
     dcc.Store(id="metrics-data-store"),
 ], fluid=True)
 
-def create_metric_card(metric_uuid, metric_name, unit, value, timestamp, offset):
+def create_metric_card(metric_uuid, metric_name, unit, value, timestamp, offset, timezone="utc"):
     """Create a card for a metric."""
     # Convert timestamp to different timezones
     utc_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-    server_time = utc_time  # In a real app, convert to server timezone
-    client_time = utc_time  # In a real app, convert to client timezone
+    
+    # Format time based on selected timezone
+    if timezone == "utc":
+        display_time = utc_time.strftime("%Y-%m-%d %H:%M:%S")
+        timezone_label = "UTC"
+    elif timezone == "server":
+        # Convert to server's local time
+        server_time = datetime.now().astimezone().tzinfo
+        display_time = utc_time.astimezone(server_time).strftime("%Y-%m-%d %H:%M:%S")
+        timezone_label = "Server Time"
+    elif timezone == "aggregator":
+        # Convert to aggregator's timezone using the offset
+        aggregator_time = utc_time + timedelta(minutes=offset)
+        display_time = aggregator_time.strftime("%Y-%m-%d %H:%M:%S")
+        timezone_label = f"Aggregator Time (UTC{'+' if offset >= 0 else ''}{offset//60:02d}:{abs(offset%60):02d})"
+    else:  # client/local time
+        display_time = utc_time.strftime("%Y-%m-%d %H:%M:%S")
+        timezone_label = "Local Time"
     
     return dbc.Card([
         dbc.CardHeader(html.H4(metric_name, className="card-title")),
         dbc.CardBody([
-            html.H2(f"{value} {unit}", className="card-text text-center"),
+            html.H2(f"{value:.2f} {unit}", className="card-text text-center"),
             html.Hr(),
             html.P([
-                html.Strong("UTC: "), 
-                html.Span(utc_time.strftime("%Y-%m-%d %H:%M:%S"))
-            ]),
-            html.P([
-                html.Strong("Server Time: "), 
-                html.Span(server_time.strftime("%Y-%m-%d %H:%M:%S"))
-            ]),
-            html.P([
-                html.Strong("Client Time: "), 
-                html.Span(client_time.strftime("%Y-%m-%d %H:%M:%S")),
-                html.Small(f" (Offset: {offset} min)", className="text-muted ml-2")
-            ]),
+                html.Span(display_time, className="metric-time"),
+                " ",
+                html.Span(timezone_label, className="timezone-label")
+            ])
         ]),
     ], className="mb-4")
 
@@ -78,11 +97,10 @@ def register_live_callbacks(app):
     
     @app.callback(
         Output("metrics-data-store", "data"),
-        [Input("interval-component", "n_intervals"),
-         Input("refresh-button", "n_clicks")],
-        prevent_initial_call=True
+        Input("interval-component", "n_intervals"),
+        prevent_initial_call=False
     )
-    def update_metrics_data(n_intervals, n_clicks):
+    def update_metrics_data(n_intervals):
         """Fetch the latest metrics data."""
         try:
             # Fetch metrics data
@@ -111,17 +129,17 @@ def register_live_callbacks(app):
             
             return metrics_data
         except Exception as e:
-            # In a real app, handle errors properly
             print(f"Error fetching metrics data: {e}")
             return []
     
     @app.callback(
         [Output("metrics-grid", "children"),
          Output("last-update-time", "children")],
-        Input("metrics-data-store", "data"),
-        prevent_initial_call=True
+        [Input("metrics-data-store", "data"),
+         Input("timezone-dropdown", "value")],
+        prevent_initial_call=False
     )
-    def update_metrics_grid(metrics_data):
+    def update_metrics_grid(metrics_data, timezone):
         """Update the metrics grid with the latest data."""
         if not metrics_data:
             return html.Div("No metrics data available."), ""
@@ -137,7 +155,8 @@ def register_live_callbacks(app):
                 metric["unit"],
                 metric["value"],
                 metric["timestamp"],
-                metric["offset"]
+                metric["offset"],
+                timezone
             )
             cards.append(dbc.Col(card, md=4))
             
@@ -155,26 +174,26 @@ def register_live_callbacks(app):
     # Add JavaScript for client-side timezone conversion
     app.clientside_callback(
         """
-        function(metrics_data) {
-            if (!metrics_data) return;
+        function(metrics_data, timezone) {
+            if (!metrics_data) return window.dash_clientside.no_update;
             
-            // Convert timestamps to client local time
-            setTimeout(function() {
-                const cards = document.querySelectorAll('.card');
-                cards.forEach(card => {
-                    const clientTimeElem = card.querySelector('p:nth-child(5) span');
-                    if (clientTimeElem) {
-                        const utcTimeStr = card.querySelector('p:nth-child(3) span').textContent;
-                        const utcTime = new Date(utcTimeStr + ' UTC');
-                        clientTimeElem.textContent = utcTime.toLocaleString();
-                    }
-                });
-            }, 100);
+            // Convert timestamps to client local time only when local time is selected
+            if (timezone === 'client') {
+                setTimeout(function() {
+                    const timeElements = document.querySelectorAll('.metric-time');
+                    timeElements.forEach(elem => {
+                        const timeStr = elem.textContent;
+                        const utcTime = new Date(timeStr + ' UTC');
+                        elem.textContent = utcTime.toLocaleString();
+                    });
+                }, 100);
+            }
             
             return window.dash_clientside.no_update;
         }
         """,
         Output("metrics-data-store", "data", allow_duplicate=True),
-        Input("metrics-data-store", "data"),
+        [Input("metrics-data-store", "data"),
+         Input("timezone-dropdown", "value")],
         prevent_initial_call=True
-    ) 
+    )
