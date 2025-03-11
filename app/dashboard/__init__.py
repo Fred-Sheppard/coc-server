@@ -14,6 +14,9 @@ def init_dashboard(server: Flask):
         suppress_callback_exceptions=True
     )
     
+    # Set the browser tab title
+    app.title = "Dashboard"
+    
     # Import pages
     from app.dashboard.about import register_about_callbacks
     from app.dashboard.live import register_live_callbacks

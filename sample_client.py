@@ -14,7 +14,7 @@ from app.utils import get_server_url
 load_dotenv()
 
 # Base URL for the API
-BASE_URL = get_server_url()
+BASE_URL = "https://coc-server-w29k.onrender.com"
 
 # Global flag for shutdown
 shutdown_requested = False

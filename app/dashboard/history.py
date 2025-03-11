@@ -39,8 +39,8 @@ layout = dbc.Container([
                                 id="timezone-dropdown",
                                 options=[
                                     {"label": "UTC", "value": "utc"},
-                                    {"label": "Server Time", "value": "server"},
-                                    {"label": "Client Time", "value": "client"},
+                                    {"label": "Local Time", "value": "client"},
+                                    {"label": "Collector Time", "value": "device"}
                                 ],
                                 value="utc",
                                 clearable=False,
@@ -302,9 +302,9 @@ def register_history_callbacks(app):
             if timezone == "client":
                 # Client-side conversion will be handled by JavaScript
                 pass
-            elif timezone == "server":
-                # In a real app, convert to server timezone
-                pass
+            elif timezone == "device":
+                # Convert to device's timezone using the offset
+                timestamp = timestamp + timedelta(minutes=snapshot.get("offset", 0))
             # For UTC, no conversion needed
             
             timestamps.append(timestamp)
@@ -349,7 +349,7 @@ def register_history_callbacks(app):
             // Convert timestamps to client local time for display
             const graph = document.getElementById('history-graph');
             if (graph && graph.layout && graph.layout.xaxis) {
-                graph.layout.xaxis.title.text = 'Time (Client Local)';
+                graph.layout.xaxis.title.text = 'Time (Local Time)';
             }
             
             return window.dash_clientside.no_update;
@@ -380,14 +380,20 @@ def register_history_callbacks(app):
             # Parse timestamp based on selected timezone
             timestamp = datetime.fromisoformat(snapshot["timestamp"].replace('Z', '+00:00'))
             
+            # Apply timezone conversion if needed
+            if timezone == "device":
+                # Convert to device's timezone using the offset
+                timestamp = timestamp + timedelta(minutes=snapshot.get("offset", 0))
+                offset = snapshot.get("offset", 0)
+                timezone_label = f"Collector Time (UTC{'+' if offset >= 0 else ''}{offset//60:02d}:{abs(offset%60):02d})"
+            elif timezone == "utc":
+                timezone_label = "UTC"
+            else:  # client/local time
+                timezone_label = "Local Time"
+            
             # Format timestamp for display
             formatted_timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            if timezone == "utc":
-                formatted_timestamp += " UTC"
-            elif timezone == "server":
-                formatted_timestamp += " (Server Time)"
-            elif timezone == "client":
-                formatted_timestamp += " (Local Time)"
+            formatted_timestamp += f" {timezone_label}"
             
             # Format value based on metric type
             value = snapshot["value"]

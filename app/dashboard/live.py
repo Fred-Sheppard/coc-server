@@ -24,9 +24,8 @@ layout = dbc.Container([
                         id="timezone-dropdown",
                         options=[
                             {"label": "UTC", "value": "utc"},
-                            {"label": "Server Time", "value": "server"},
                             {"label": "Local Time", "value": "client"},
-                            {"label": "Aggregator Time", "value": "aggregator"}
+                            {"label": "Collector Time", "value": "device"}
                         ],
                         value="utc",
                         clearable=False,
@@ -60,16 +59,11 @@ def create_metric_card(metric_uuid, metric_name, unit, value, timestamp, offset,
     if timezone == "utc":
         display_time = utc_time.strftime("%Y-%m-%d %H:%M:%S")
         timezone_label = "UTC"
-    elif timezone == "server":
-        # Convert to server's local time
-        server_time = datetime.now().astimezone().tzinfo
-        display_time = utc_time.astimezone(server_time).strftime("%Y-%m-%d %H:%M:%S")
-        timezone_label = "Server Time"
-    elif timezone == "aggregator":
-        # Convert to aggregator's timezone using the offset
-        aggregator_time = utc_time + timedelta(minutes=offset)
-        display_time = aggregator_time.strftime("%Y-%m-%d %H:%M:%S")
-        timezone_label = f"Aggregator Time (UTC{'+' if offset >= 0 else ''}{offset//60:02d}:{abs(offset%60):02d})"
+    elif timezone == "device":
+        # Convert to device's timezone using the offset (previously aggregator time)
+        device_time = utc_time + timedelta(minutes=offset)
+        display_time = device_time.strftime("%Y-%m-%d %H:%M:%S")
+        timezone_label = f"Collector Time (UTC{'+' if offset >= 0 else ''}{offset//60:02d}:{abs(offset%60):02d})"
     else:  # client/local time
         display_time = utc_time.strftime("%Y-%m-%d %H:%M:%S")
         timezone_label = "Local Time"
