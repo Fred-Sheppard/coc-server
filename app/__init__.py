@@ -33,10 +33,6 @@ def create_app():
     from app.routes.api import api_bp
     app.register_blueprint(api_bp)
     
-    # Register SSE routes
-    from app.routes.sse import sse_bp
-    app.register_blueprint(sse_bp)
-    
     # Register Dash application
     from app.dashboard import init_dashboard
     init_dashboard(app)

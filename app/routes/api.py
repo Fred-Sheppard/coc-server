@@ -4,12 +4,14 @@ from sqlalchemy.exc import IntegrityError
 import logging
 from app import db
 from app.models.models import Aggregator, Metric, Snapshot
-from app.routes.sse import send_shutdown_event
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
 api_bp = Blueprint('api', __name__)
+
+# Dictionary to store shutdown status for aggregators
+shutdown_status = {}
 
 @api_bp.route('/register_aggregator', methods=['POST'])
 def register_aggregator():
@@ -171,7 +173,25 @@ def shutdown_aggregator():
     if not aggregator:
         return jsonify({'error': f'Aggregator with UUID "{aggregator_uuid}" not found'}), 404
     
-    # Send shutdown event
-    send_shutdown_event(aggregator_uuid)
+    # Store shutdown status instead of sending SSE event
+    shutdown_status[aggregator_uuid] = True
     
-    return '', 200 
+    return '', 200
+
+@api_bp.route('/poll_shutdown_status/<aggregator_uuid>', methods=['GET'])
+def poll_shutdown_status(aggregator_uuid):
+    """Endpoint for clients to poll for shutdown status."""
+    # Check if aggregator exists
+    aggregator = Aggregator.query.get(aggregator_uuid)
+    if not aggregator:
+        return jsonify({'error': f'Aggregator with UUID "{aggregator_uuid}" not found'}), 404
+    
+    # Return the shutdown status
+    should_shutdown = shutdown_status.get(aggregator_uuid, False)
+    
+    # If client is shutting down, clear the status
+    if should_shutdown:
+        logger.info(f"Shutting down aggregator {aggregator_uuid}.")
+        shutdown_status.pop(aggregator_uuid, None)
+    
+    return jsonify({'should_shutdown': should_shutdown}) 

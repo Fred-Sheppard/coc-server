@@ -69,29 +69,27 @@ def submit_snapshot(metric_uuid, value, offset_minutes):
     return response.status_code == 201
 
 def listen_for_shutdown(aggregator_uuid):
-    """Listen for shutdown events."""
+    """Poll for shutdown status."""
     global shutdown_requested
     
-    url = f"{BASE_URL}/shutdown_events/{aggregator_uuid}"
-    headers = {"Accept": "text/event-stream"}
+    url = f"{BASE_URL}/poll_shutdown_status/{aggregator_uuid}"
     
-    try:
-        response = requests.get(url, headers=headers, stream=True)
+    while not shutdown_requested:
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('should_shutdown', False):
+                    print("Received shutdown command. Shutting down...")
+                    shutdown_requested = True
+                    break
+            else:
+                print(f"Error polling shutdown status: {response.text}")
+        except Exception as e:
+            print(f"Error in polling connection: {e}")
         
-        for line in response.iter_lines():
-            if line:
-                line_str = line.decode('utf-8')
-                if line_str.startswith('data:'):
-                    data_str = line_str[5:].strip()
-                    data = json.loads(data_str)
-                    
-                    if "action" in data and data["action"] == "shutdown":
-                        print("Received shutdown command. Shutting down...")
-                        shutdown_requested = True
-                        break
-    except Exception as e:
-        print(f"Error in SSE connection: {e}")
-        # In a real client, you would reconnect after a delay
+        # Wait before polling again
+        time.sleep(5)  # Poll every 5 seconds
 
 def generate_metrics(aggregator_uuid, metric_uuids, interval=5):
     """Generate random metrics at regular intervals."""
