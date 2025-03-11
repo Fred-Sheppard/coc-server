@@ -9,7 +9,6 @@ A Flask-based application that collects and aggregates metrics from various sour
 - View real-time metrics on a dashboard
 - Explore historical metric data
 - Control aggregators (shutdown functionality)
-- Server-Sent Events (SSE) for aggregator control
 
 ## Setup
 
@@ -50,7 +49,7 @@ A Flask-based application that collects and aggregates metrics from various sour
 - `GET /snapshots`: Fetch historical snapshots for a metric
 - `GET /latest_snapshots`: Fetch the most recent snapshot for all metrics
 - `POST /shutdown_aggregator`: Initiate shutdown for a specific aggregator
-- `GET /shutdown_events/<aggregator_uuid>`: SSE endpoint for shutdown events
+- `GET /poll_shutdown_status/<aggregator_uuid>`: Poll to check if an aggregator should shut down
 
 ## Dashboard
 

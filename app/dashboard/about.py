@@ -8,25 +8,22 @@ from app.utils import get_server_url
 layout = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.H1("Metric Aggregator Server", className="display-4"),
+            html.H1("Metric Aggregator Server with Dashboard", className="display-4"),
             html.Hr(),
             html.P(
-                "This application collects and aggregates metrics from various sources, "
-                "providing a dashboard for visualization and control.",
+                "A Flask-based application that collects and aggregates metrics from various sources, "
+                "with a Plotly Dash dashboard for visualization.",
                 className="lead"
             ),
-            html.H2("TODO"),
-            dcc.Markdown(
-                """
-                - Fix code TODOs
-                - Study and understand code
-                - Make powerpoint
-                - Upload to cloud
-                - Update ReadMe
-                - Update About
-                - pip install, add plugins outside sdk
-                """
-            ),
+            
+            html.H2("Features", className="mt-4"),
+            html.Ul([
+                html.Li("Register aggregators and metrics"),
+                html.Li("Submit metric snapshots"),
+                html.Li("View real-time metrics on a dashboard"),
+                html.Li("Explore historical metric data"),
+                html.Li("Control aggregators (shutdown functionality)")
+            ]),
         ])
     ]),
 
@@ -223,18 +220,17 @@ layout = dbc.Container([
                 ])
             ], className="mb-4"),
 
-            html.H4("4. Listen for Shutdown Events", className="mt-3"),
-            html.P("Aggregators should listen for shutdown events:"),
+            html.H4("4. Poll for Shutdown Status", className="mt-3"),
+            html.P("Aggregators should periodically poll for shutdown status:"),
             dbc.Card([
-                dbc.CardHeader("SSE Endpoint: GET /shutdown_events/<aggregator_uuid>"),
+                dbc.CardHeader("API Endpoint: GET /poll_shutdown_status/<aggregator_uuid>"),
                 dbc.CardBody([
                     html.P("Example (Python):"),
                     dcc.Markdown("""
                     ```python
                     import requests
                     import json
-                    import sseclient
-                    import signal
+                    import time
                     import sys
                     import os
                     from dotenv import load_dotenv
@@ -249,31 +245,43 @@ layout = dbc.Container([
                         # Perform cleanup here
                         sys.exit(0)
                     
-                    # Function to listen for shutdown events
-                    def listen_for_shutdown(aggregator_uuid):
-                        url = f"{get_server_url()}/shutdown_events/{aggregator_uuid}"
-                        headers = {"Accept": "text/event-stream"}
+                    # Function to poll for shutdown status
+                    def poll_shutdown_status(aggregator_uuid, interval=5):
+                        url = f"{get_server_url()}/poll_shutdown_status/{aggregator_uuid}"
                         
-                        try:
-                            response = requests.get(url, headers=headers, stream=True)
-                            client = sseclient.SSEClient(response)
-                            
-                            for event in client.events():
-                                data = json.loads(event.data)
-                                if "action" in data and data["action"] == "shutdown":
-                                    handle_shutdown()
-                        except Exception as e:
-                            print(f"Error in SSE connection: {e}")
-                            # Reconnect after a delay
-                            time.sleep(5)
-                            listen_for_shutdown(aggregator_uuid)
+                        while True:
+                            try:
+                                response = requests.get(url)
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    if data.get("should_shutdown", False):
+                                        handle_shutdown()
+                                
+                                # Wait before polling again
+                                time.sleep(interval)
+                            except Exception as e:
+                                print(f"Error polling shutdown status: {e}")
+                                # Wait before retrying
+                                time.sleep(interval)
                     
-                    # Start listening for shutdown events
-                    listen_for_shutdown(aggregator_uuid)
+                    # Start polling for shutdown status
+                    poll_shutdown_status(aggregator_uuid)
                     ```
                     """)
                 ])
             ], className="mb-4"),
+            
+            html.H2("API Endpoints", className="mt-4"),
+            html.Ul([
+                html.Li(html.Code("POST /register_aggregator"), ": Register a new aggregator"),
+                html.Li(html.Code("POST /register_metric"), ": Register a metric under an aggregator"),
+                html.Li(html.Code("POST /snapshot"), ": Submit a metric snapshot"),
+                html.Li(html.Code("GET /metrics"), ": Fetch all registered metrics"),
+                html.Li(html.Code("GET /snapshots"), ": Fetch historical snapshots for a metric"),
+                html.Li(html.Code("GET /latest_snapshots"), ": Fetch the most recent snapshot for all metrics"),
+                html.Li(html.Code("POST /shutdown_aggregator"), ": Initiate shutdown for a specific aggregator"),
+                html.Li(html.Code("GET /poll_shutdown_status/<aggregator_uuid>"), ": Poll to check if an aggregator should shut down")
+            ]),
         ])
     ])
 ], fluid=True)
