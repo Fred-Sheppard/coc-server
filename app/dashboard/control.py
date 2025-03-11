@@ -1,9 +1,10 @@
-from dash import html, dcc, callback, Input, Output, State, MATCH, ALL, callback_context
-import dash_bootstrap_components as dbc
-import requests
-from datetime import datetime
 import json
 import os
+from datetime import datetime
+
+import dash_bootstrap_components as dbc
+import requests
+from dash import html, dcc, Input, Output, State, ALL, callback_context
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -20,12 +21,6 @@ layout = dbc.Container([
                 "This page allows you to manage aggregators. "
                 "You can view the status of all aggregators and send shutdown commands.",
                 className="lead"
-            ),
-            dbc.Button(
-                "Reload Aggregators", 
-                id="reload-aggregators-button", 
-                color="primary", 
-                className="mb-3"
             ),
             html.Div(id="last-reload-time"),
         ])
@@ -55,6 +50,13 @@ layout = dbc.Container([
     # Store for aggregators data
     dcc.Store(id="aggregators-store"),
     dcc.Store(id="selected-aggregator-store"),
+    
+    # Hidden interval component for automatic updates
+    dcc.Interval(
+        id='control-interval-component',
+        interval=10*1000,  # in milliseconds (10 seconds)
+        n_intervals=0
+    ),
 ], fluid=True)
 
 def create_aggregators_table(aggregators):
@@ -111,10 +113,10 @@ def register_control_callbacks(app):
     
     @app.callback(
         Output("aggregators-store", "data"),
-        [Input("reload-aggregators-button", "n_clicks")],
+        [Input("control-interval-component", "n_intervals")],
         prevent_initial_call=False
     )
-    def fetch_aggregators(n_clicks):
+    def fetch_aggregators(_):
         """Fetch the list of aggregators."""
         try:
             response = requests.get(f"{SERVER_URL}/aggregators")
@@ -134,9 +136,9 @@ def register_control_callbacks(app):
         """Update the aggregators table with the fetched data."""
         table = create_aggregators_table(aggregators)
         
-        # Update the last reload time
+        # Update the last update time
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        last_reload = html.P(f"Last reloaded: {now}", className="text-muted")
+        last_reload = html.P(f"Last updated: {now}", className="text-muted")
         
         return table, last_reload
     
