@@ -1,14 +1,10 @@
-import os
 from datetime import datetime, timedelta
 
 import dash_bootstrap_components as dbc
 import requests
 from dash import html, dcc, Input, Output
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
+from app.utils import get_server_url
 
 # Define the layout for the Live page
 layout = dbc.Container([
@@ -103,11 +99,11 @@ def register_live_callbacks(app):
         """Fetch the latest metrics data."""
         try:
             # Fetch metrics data
-            metrics_response = requests.get(f"{SERVER_URL}/metrics")
+            metrics_response = requests.get(f"{get_server_url()}/metrics")
             metrics = metrics_response.json()
             
             # Fetch latest snapshots
-            snapshots_response = requests.get(f"{SERVER_URL}/latest_snapshots")
+            snapshots_response = requests.get(f"{get_server_url()}/latest_snapshots")
             snapshots = snapshots_response.json()
             
             # Combine metrics and snapshots

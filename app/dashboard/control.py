@@ -1,15 +1,11 @@
 import json
-import os
 from datetime import datetime
 
 import dash_bootstrap_components as dbc
 import requests
 from dash import html, dcc, Input, Output, State, ALL, callback_context
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
+from app.utils import get_server_url
 
 # Define the layout for the Control page
 layout = dbc.Container([
@@ -119,7 +115,7 @@ def register_control_callbacks(app):
     def fetch_aggregators(_):
         """Fetch the list of aggregators."""
         try:
-            response = requests.get(f"{SERVER_URL}/aggregators")
+            response = requests.get(f"{get_server_url()}/aggregators")
             aggregators = response.json()
             return aggregators
         except Exception as e:
@@ -196,7 +192,7 @@ def register_control_callbacks(app):
         try:
             # Send shutdown command
             response = requests.post(
-                f"{SERVER_URL}/shutdown_aggregator",
+                f"{get_server_url()}/shutdown_aggregator",
                 json={"aggregator_uuid": selected_aggregator["uuid"]}
             )
             

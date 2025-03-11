@@ -8,12 +8,13 @@ import signal
 import sys
 import os
 from dotenv import load_dotenv
+from app.utils import get_server_url
 
 # Load environment variables
 load_dotenv()
 
 # Base URL for the API
-BASE_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
+BASE_URL = get_server_url()
 
 # Global flag for shutdown
 shutdown_requested = False

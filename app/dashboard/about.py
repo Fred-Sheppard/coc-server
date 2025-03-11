@@ -1,11 +1,8 @@
-from dash import html, dcc
 import dash_bootstrap_components as dbc
-import os
-from dotenv import load_dotenv
+from dash import html, dcc
 
-# Load environment variables
-load_dotenv()
-SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
+from app.utils import get_server_url
+
 
 # Define the layout for the About page
 layout = dbc.Container([
@@ -32,12 +29,12 @@ layout = dbc.Container([
             ),
         ])
     ]),
-    
+
     dbc.Row([
         dbc.Col([
             html.H2("Getting Started", className="mt-4"),
             html.P("Follow these steps to start using the Metric Aggregator:"),
-            
+
             html.H4("1. Register an Aggregator", className="mt-3"),
             html.P("First, register a new aggregator with a unique name:"),
             dbc.Card([
@@ -62,7 +59,7 @@ layout = dbc.Container([
                     html.P("Example (curl):"),
                     dcc.Markdown(f"""
                     ```bash
-                    curl -X POST {SERVER_URL}/register_aggregator \\
+                    curl -X POST {get_server_url()}/register_aggregator \\
                          -H "Content-Type: application/json" \\
                          -d '{{"name": "my-aggregator"}}'
                     ```
@@ -74,13 +71,13 @@ layout = dbc.Container([
                     import json
                     import os
                     from dotenv import load_dotenv
+                    from app.utils import get_server_url
                     
                     # Load environment variables
                     load_dotenv()
-                    SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
                     
                     response = requests.post(
-                        f"{SERVER_URL}/register_aggregator",
+                        f"{get_server_url()}/register_aggregator",
                         headers={"Content-Type": "application/json"},
                         data=json.dumps({"name": "my-aggregator"})
                     )
@@ -91,7 +88,7 @@ layout = dbc.Container([
                     """)
                 ])
             ], className="mb-4"),
-            
+
             html.H4("2. Register Metrics", className="mt-3"),
             html.P("Next, register metrics under your aggregator:"),
             dbc.Card([
@@ -118,7 +115,7 @@ layout = dbc.Container([
                     html.P("Example (curl):"),
                     dcc.Markdown(f"""
                     ```bash
-                    curl -X POST {SERVER_URL}/register_metric \\
+                    curl -X POST {get_server_url()}/register_metric \\
                          -H "Content-Type: application/json" \\
                          -d '{{
                              "aggregator_uuid": "12345678-1234-5678-1234-567812345678",
@@ -134,13 +131,13 @@ layout = dbc.Container([
                     import json
                     import os
                     from dotenv import load_dotenv
+                    from app.utils import get_server_url
                     
                     # Load environment variables
                     load_dotenv()
-                    SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
                     
                     response = requests.post(
-                        f"{SERVER_URL}/register_metric",
+                        f"{get_server_url()}/register_metric",
                         headers={"Content-Type": "application/json"},
                         data=json.dumps({
                             "aggregator_uuid": aggregator_uuid,
@@ -155,7 +152,7 @@ layout = dbc.Container([
                     """)
                 ])
             ], className="mb-4"),
-            
+
             html.H4("3. Submit Metric Snapshots", className="mt-3"),
             html.P("Finally, submit metric snapshots:"),
             dbc.Card([
@@ -175,7 +172,7 @@ layout = dbc.Container([
                     html.P("Example (curl):"),
                     dcc.Markdown(f"""
                     ```bash
-                    curl -X POST {SERVER_URL}/snapshot \\
+                    curl -X POST {get_server_url()}/snapshot \\
                          -H "Content-Type: application/json" \\
                          -d '{{
                              "metric_uuid": "87654321-8765-4321-8765-432187654321",
@@ -194,10 +191,10 @@ layout = dbc.Container([
                     import time
                     import os
                     from dotenv import load_dotenv
+                    from app.utils import get_server_url
                     
                     # Load environment variables
                     load_dotenv()
-                    SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
                     
                     # Function to submit a snapshot
                     def submit_snapshot(metric_uuid, value):
@@ -207,7 +204,7 @@ layout = dbc.Container([
                         offset = int(time.timezone / 60)
                         
                         response = requests.post(
-                            f"{SERVER_URL}/snapshot",
+                            f"{get_server_url()}/snapshot",
                             headers={"Content-Type": "application/json"},
                             data=json.dumps({
                                 "metric_uuid": metric_uuid,
@@ -225,7 +222,7 @@ layout = dbc.Container([
                     """)
                 ])
             ], className="mb-4"),
-            
+
             html.H4("4. Listen for Shutdown Events", className="mt-3"),
             html.P("Aggregators should listen for shutdown events:"),
             dbc.Card([
@@ -241,10 +238,10 @@ layout = dbc.Container([
                     import sys
                     import os
                     from dotenv import load_dotenv
+                    from app.utils import get_server_url
                     
                     # Load environment variables
                     load_dotenv()
-                    SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
                     
                     # Function to handle shutdown
                     def handle_shutdown():
@@ -254,7 +251,7 @@ layout = dbc.Container([
                     
                     # Function to listen for shutdown events
                     def listen_for_shutdown(aggregator_uuid):
-                        url = f"{SERVER_URL}/shutdown_events/{aggregator_uuid}"
+                        url = f"{get_server_url()}/shutdown_events/{aggregator_uuid}"
                         headers = {"Accept": "text/event-stream"}
                         
                         try:
@@ -281,7 +278,8 @@ layout = dbc.Container([
     ])
 ], fluid=True)
 
+
 def register_about_callbacks(_app):
     """Register callbacks for the About page."""
     # No callbacks needed for the About page
-    pass 
+    pass

@@ -1,14 +1,10 @@
-import os
 from datetime import datetime, timedelta
 
 import dash_bootstrap_components as dbc
 import requests
 from dash import html, dcc, Input, Output, dash_table
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
+from app.utils import get_server_url
 
 # Define the layout for the History page
 layout = dbc.Container([
@@ -201,7 +197,7 @@ def register_history_callbacks(app):
     def fetch_metrics_list(_):
         """Fetch the list of available metrics."""
         try:
-            response = requests.get(f"{SERVER_URL}/metrics")
+            response = requests.get(f"{get_server_url()}/metrics")
             metrics = response.json()
             return metrics
         except Exception as e:
@@ -262,7 +258,7 @@ def register_history_callbacks(app):
             
             # Fetch snapshots
             response = requests.get(
-                f"{SERVER_URL}/snapshots",
+                f"{get_server_url()}/snapshots",
                 params={
                     "metric_uuid": metric_uuid,
                     "start": start_datetime,
