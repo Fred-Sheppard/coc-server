@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask
+from flask import Flask, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from dotenv import load_dotenv
@@ -36,6 +36,11 @@ def create_app():
     # Register Dash application
     from app.dashboard import init_dashboard
     init_dashboard(app)
+    
+    # Add root route to redirect to dashboard
+    @app.route('/')
+    def index():
+        return redirect('/dashboard/')
     
     # Command to initialize the database
     @app.cli.command('db-init')
