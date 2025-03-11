@@ -56,31 +56,49 @@ layout = dbc.Container([
                     dbc.Row([
                         dbc.Col([
                             html.Label("Start Date/Time"),
-                            dcc.DatePickerSingle(
-                                id="start-date",
-                                display_format="YYYY-MM-DD",
-                                date=datetime.now().date() - timedelta(days=1),
-                            ),
-                            dcc.Input(
-                                id="start-time",
-                                type="time",
-                                value="00:00",
-                                className="ml-2",
-                            ),
+                            html.Div([
+                                dcc.DatePickerSingle(
+                                    id="start-date",
+                                    display_format="YYYY-MM-DD",
+                                    date=datetime.now().date() - timedelta(days=1),
+                                ),
+                                dcc.Input(
+                                    id="start-time",
+                                    type="time",
+                                    value="00:00",
+                                    style={
+                                        "font-family": "'Open Sans', sans-serif",
+                                        "font-size": "18px",
+                                        "height": "46px",
+                                        "width": "65px",
+                                        "margin-left": "10px",
+                                        "margin-right": "10px",
+                                    },
+                                ),
+                            ], style={"display": "flex", "align-items": "center"}),
                         ], md=6),
                         dbc.Col([
                             html.Label("End Date/Time"),
-                            dcc.DatePickerSingle(
-                                id="end-date",
-                                display_format="YYYY-MM-DD",
-                                date=datetime.now().date(),
-                            ),
-                            dcc.Input(
-                                id="end-time",
-                                type="time",
-                                value="23:59",
-                                className="ml-2",
-                            ),
+                            html.Div([
+                                dcc.DatePickerSingle(
+                                    id="end-date",
+                                    display_format="YYYY-MM-DD",
+                                    date=datetime.now().date(),
+                                ),
+                                dcc.Input(
+                                    id="end-time",
+                                    type="time",
+                                    value="23:59",
+                                    style={
+                                        "font-family": "'Open Sans', sans-serif",
+                                        "font-size": "18px",
+                                        "height": "46px",
+                                        "width": "65px",
+                                        "margin-left": "10px",
+                                        "margin-right": "10px",
+                                    },
+                                ),
+                            ], style={"display": "flex", "align-items": "center"}),
                         ], md=6),
                     ], className="mt-3"),
                     
