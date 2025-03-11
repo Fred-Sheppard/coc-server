@@ -1,10 +1,9 @@
-from dash import html, dcc, callback, Input, Output, State
-import dash_bootstrap_components as dbc
-import plotly.graph_objs as go
-import requests
-from datetime import datetime, timedelta
-import json
 import os
+from datetime import datetime, timedelta
+
+import dash_bootstrap_components as dbc
+import requests
+from dash import html, dcc, Input, Output
 from dotenv import load_dotenv
 
 # Load environment variables

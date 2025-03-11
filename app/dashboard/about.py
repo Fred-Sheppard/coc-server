@@ -18,6 +18,18 @@ layout = dbc.Container([
                 "providing a dashboard for visualization and control.",
                 className="lead"
             ),
+            html.H2("TODO"),
+            dcc.Markdown(
+                """
+                - Fix code TODOs
+                - Study and understand code
+                - Make powerpoint
+                - Upload to cloud
+                - Update ReadMe
+                - Update About
+                - pip install, add plugins outside sdk
+                """
+            ),
         ])
     ]),
     
@@ -269,7 +281,7 @@ layout = dbc.Container([
     ])
 ], fluid=True)
 
-def register_about_callbacks(app):
+def register_about_callbacks(_app):
     """Register callbacks for the About page."""
     # No callbacks needed for the About page
     pass 

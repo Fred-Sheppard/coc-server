@@ -1,10 +1,9 @@
-from dash import html, dcc, callback, Input, Output, State
-import dash_bootstrap_components as dbc
-import plotly.graph_objs as go
-import requests
-from datetime import datetime, timedelta
-import json
 import os
+from datetime import datetime, timedelta
+
+import dash_bootstrap_components as dbc
+import requests
+from dash import html, dcc, Input, Output, dash_table
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -135,6 +134,56 @@ layout = dbc.Container([
         ]),
     ]),
     
+    # Add Data Table
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Metric History Data"),
+                dbc.CardBody([
+                    dcc.Loading(
+                        id="loading-table",
+                        type="default",
+                        children=[
+                            dash_table.DataTable(
+                                id="history-table",
+                                columns=[
+                                    {"name": "Timestamp", "id": "timestamp"},
+                                    {"name": "Value", "id": "value", "type": "numeric"},
+                                    {"name": "Formatted Value", "id": "formatted_value"}
+                                ],
+                                page_size=10,
+                                page_current=0,
+                                page_action="native",
+                                sort_action="native",
+                                sort_mode="multi",
+                                filter_action="native",
+                                tooltip_data=[],
+                                tooltip_duration=None,
+                                style_table={"overflowX": "auto"},
+                                style_cell={
+                                    "textAlign": "left",
+                                    "padding": "10px",
+                                    "fontFamily": "'Open Sans', sans-serif"
+                                },
+                                style_header={
+                                    "backgroundColor": "#f8f9fa",
+                                    "fontWeight": "bold",
+                                    "borderBottom": "1px solid #dee2e6"
+                                },
+                                style_data_conditional=[
+                                    {
+                                        "if": {"row_index": "odd"},
+                                        "backgroundColor": "#f8f9fa"
+                                    }
+                                ]
+                            ),
+                        ],
+                    ),
+                ]),
+            ], className="mt-4 mb-4"),
+        ]),
+    ]),
+    
     # Store for metrics data
     dcc.Store(id="metrics-list-store"),
     dcc.Store(id="selected-metric-store"),
@@ -149,7 +198,7 @@ def register_history_callbacks(app):
         Input("metric-dropdown", "id"),  # Just to trigger on page load
         prevent_initial_call=False
     )
-    def fetch_metrics_list(dropdown_id):
+    def fetch_metrics_list(_):
         """Fetch the list of available metrics."""
         try:
             response = requests.get(f"{SERVER_URL}/metrics")
@@ -315,3 +364,104 @@ def register_history_callbacks(app):
          Input("timezone-dropdown", "value")],
         prevent_initial_call=True
     ) 
+    
+    @app.callback(
+        Output("history-table", "data"),
+        [Input("snapshots-store", "data"),
+         Input("selected-metric-store", "data"),
+         Input("timezone-dropdown", "value")],
+        prevent_initial_call=True
+    )
+    def update_history_table(snapshots, selected_metric, timezone):
+        """Update the history table with the fetched snapshots."""
+        if not snapshots or not selected_metric:
+            return []
+        
+        # Prepare table data
+        table_data = []
+        
+        for snapshot in snapshots:
+            # Parse timestamp based on selected timezone
+            timestamp = datetime.fromisoformat(snapshot["timestamp"].replace('Z', '+00:00'))
+            
+            # Format timestamp for display
+            formatted_timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            if timezone == "utc":
+                formatted_timestamp += " UTC"
+            elif timezone == "server":
+                formatted_timestamp += " (Server Time)"
+            elif timezone == "client":
+                formatted_timestamp += " (Local Time)"
+            
+            # Format value based on metric type
+            value = snapshot["value"]
+            
+            # Format the value based on the type
+            formatted_value = value
+            if isinstance(value, (int, float)):
+                if selected_metric.get("unit") in ["percent", "%"]:
+                    formatted_value = f"{value:.2f}%"
+                elif selected_metric.get("unit") in ["bytes", "B"]:
+                    # Format bytes to appropriate unit (KB, MB, GB)
+                    if value >= 1024**3:
+                        formatted_value = f"{value/1024**3:.2f} GB"
+                    elif value >= 1024**2:
+                        formatted_value = f"{value/1024**2:.2f} MB"
+                    elif value >= 1024:
+                        formatted_value = f"{value/1024:.2f} KB"
+                    else:
+                        formatted_value = f"{value} B"
+                else:
+                    # For other numeric values, format with 2 decimal places
+                    formatted_value = f"{value:.2f} {selected_metric.get('unit', '')}"
+            
+            # Add row to table data
+            table_data.append({
+                "timestamp": formatted_timestamp,
+                "value": value,
+                "formatted_value": formatted_value
+            })
+        
+        return table_data
+    
+    @app.callback(
+        Output("history-table", "columns"),
+        [Input("selected-metric-store", "data")],
+        prevent_initial_call=True
+    )
+    def update_table_columns(selected_metric):
+        """Update table columns based on selected metric."""
+        if not selected_metric:
+            return [
+                {"name": "Timestamp", "id": "timestamp"},
+                {"name": "Value", "id": "value"},
+                {"name": "Formatted Value", "id": "formatted_value"}
+            ]
+        
+        # Create columns with appropriate headers
+        return [
+            {"name": "Timestamp", "id": "timestamp"},
+            {"name": f"Raw Value", "id": "value", "type": "numeric"},
+            {"name": f"Formatted Value", "id": "formatted_value"},
+        ] 
+    
+    @app.callback(
+        Output("history-table", "tooltip_data"),
+        [Input("history-table", "data"),
+         Input("selected-metric-store", "data")],
+        prevent_initial_call=True
+    )
+    def update_tooltip_data(table_data, selected_metric):
+        """Update tooltip data for the table rows."""
+        if not table_data or not selected_metric:
+            return []
+        
+        tooltip_data = []
+        for row in table_data:
+            tooltip_data.append({
+                "timestamp": {"value": f"Recorded at {row['timestamp']}"},
+                "value": {"value": f"Raw value: {row['value']} {selected_metric.get('unit', '')}"},
+                "formatted_value": {"value": f"Metric: {selected_metric.get('name', '')}\nAggregator: {selected_metric.get('aggregator_name', '')}\nValue: {row['formatted_value']}"}
+            })
+        
+        return tooltip_data
